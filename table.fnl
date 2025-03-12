@@ -1,48 +1,90 @@
-table.fnl
-
-;; Table Definitions
-(local numC [])
-(local strC [])
-(local idC [])
-(local appC [])
-(local lamC [])
-(local ifC [])
-
 ;; insert functions
-;; Function to insert a numC into the table
 (fn create-numC [n]
-  {:n n})
+  {:type "numC" :n n})  ;; Adding type "num"
 
-;; Function to insert a strC into the table
 (fn create-strC [str]
-  {:str str})
+  {:type "strC" :str str})  ;; Adding type "str"
 
-;; Function to insert an idC into the table
 (fn create-idC [id]
-  {:id id})
+  {:type "idC" :id id})  ;; Adding type "id"
 
-;; Function to insert an idC into the table
 (fn create-appC [funID argsIDs]
-  {:funID funID :argsIDs argsIDs})
+  {:type "appC" :funID funID :argsIDs argsIDs})
 
-;; Function to insert a lamC into the table
 (fn create-lamC [argsIDs body]
-  {:argsIDs argsIDs :body body})
+  {:type "lamC" :argsIDs argsIDs :body body})
 
-;; Function to insert an ifC into the table
 (fn create-ifC [ifID thenID elseID]
-  {:ifID ifID :thenID thenID :elseID elseID})
+  {:type "ifC" :ifID ifID :thenID thenID :elseID elseID})
 
-;; Insert values
-(var num (create-numC 42))
-(print num.n)
-(create-strC "I hate fennel")
-(create-idC "x") ; we have to store ids as strings becasue in Fennel symbols are interned and this would break scope
-(create-appC "myFunID" ["arg1ID" "arg2ID" "arg3ID"])
-(create-lamC ["arg1" "arg2"] "bodyID")
-(create-ifC "true" 12 10)
+(fn create-numV [n]
+  {:type "numV" :n n})  
 
-;;Assume ASTs work (they don't)
+(fn create-strV [str]
+  {:type "strV" :str str})  
 
-; (fn interp [ast env]
-;     )
+(fn create-boolV [b]
+  {:type "boolV" :b b})  
+
+(fn create-cloV [args body clo-env]
+  {:type "cloV" :args args :body body :clo-env clo-env})
+
+(fn create-primopV [op]
+  {:type "primopV" :op op})
+
+(fn create-bind [id val]
+  {:type "bind" :id id :val val})
+
+;; parser (time permitting)
+
+;; Interp function
+(fn interp [ast]
+  (match ast
+    {:type "numC" :n n} n
+    {:type "strC" :str str} str  
+    {:type "idC" :id id} id 
+    {:type "appC" :funID funID :argsIDs argsIDs}
+    (do
+        (local fun (interp funID))
+        (match fun
+            {:type "primopV" :op op} (apply-op op argsIDs)
+            {:type "cloV" :args args :body body :clo-env clo-env}
+            (interp body (extend-closure args (interp-args argsIDs env) clo-env))
+            ))
+    {:type "lamC" :argIDs argIDs :body body} (create-cloV argIds body env)
+    {:type "ifC" :ifID ifID :thenID thenID :elseID elseID}
+    (do
+        (local ans (interp ifID env))
+        (match ans
+            {:type "boolV" :b b} 
+            (if b
+                (interp thenID env)
+                (interp elseID env))
+            _ "if no work"))        
+    _ (error "Cheeseballs" ast)))  ;; Catch any unknown ASTs
+
+(fn apply-op [op args]
+    (match op
+        :+ (create-numV (+ (first args.n) (second args.n)))
+        :- (create-numV (- (first args.n) (second args.n)))
+        :* (create-numV (* (first args.n) (second args.n)))
+        :/ (create-numV (/ (first args.n) (second args.n)))
+        _ (error "terrible operators" op)))
+
+;;have clo-env and stuff locally scoped
+(fn extend-closure [args-id args-value clo-env]
+  (if (= (length args-id) (length args-value))
+      (append (create-bindings args-id args-value) clo-env)
+      (error 'interp "QWJZ: Number of variables and arguments don't match")))
+
+;;Helper function to create bindings for each id and value (as a list of bindings)
+(fn create-bindings [args-id args-value]
+  (match (list args-id args-value)
+    [] [] 
+    [first-id rest-id] [(create-bind first-id (first args-value))].insert(create-bindings rest-id (rest args-value))))
+
+
+;; Test cases
+(print (interp (create-numC 5)))  ;; Should print 5
+(print (interp (create-strC "I hate fennel")))  ;; Should print "I hate fennel"
+(print (interp (create-idC :y)))  ;; Should print :y (the id itself)
