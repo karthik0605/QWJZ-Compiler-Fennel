@@ -2,9 +2,6 @@
 (fn create-numC [n]
   {:type "numC" :n n})  ;; Adding type "num"
 
-(var num (create-numC 4))
-num.n
-
 (fn create-strC [str]
   {:type "strC" :str str})  ;; Adding type "str"
 
@@ -62,12 +59,13 @@ num.n
           :/ (create-numV (/ arg1.n arg2.n))
           _ (error "terrible operators" op))))
 
-(fn lookup [id env]
+(fn lookup [id env] 
+  (var ans nil)
   (for [i 1 (length env)]
     (do
       (local item (. env i))
       (if (= id item.id)
-            (print item.val)))))
+            (set ans item.val)))) ans)
             
 ;; Interp function
 (fn interp [ast top-env]
@@ -83,7 +81,7 @@ num.n
             ; {:type "cloV" :args args :body body :clo-env clo-env}
             ; (interp body (extend-closure args (interp-args argsIDs env) clo-env))
             ))
-    ; {:type "lamC" :argIDs argIDs :body body} (create-cloV argIds body env)
+    {:type "lamC" :argIDs argIDs :body body} (create-cloV argIDs body top-env)
     ; {:type "ifC" :ifID ifID :thenID thenID :elseID elseID}
     ; (do
     ;     (local ans (interp ifID env))
@@ -114,4 +112,4 @@ num.n
 ;(print (serialize (interp (create-numC 5) top-env)))  ;; Should print 5
 ;(print (serialize (interp (create-strC "I hate fennel") top-env)))  ;; Should print "I hate fennel"
 ;(print (interp (create-idC :y)))
-(serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env))
+(print (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)))
