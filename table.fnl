@@ -1,15 +1,12 @@
-;; insert functions 
-
-;;ids have to be strings, not symbols
-
+;;Data Definitions
 (fn create-numC [n]
-  {:type "numC" :n n})  ;; Adding type "num"
+  {:type "numC" :n n}) 
 
 (fn create-strC [str]
-  {:type "strC" :str str})  ;; Adding type "str"
+  {:type "strC" :str str})  
 
 (fn create-idC [id]
-  {:type "idC" :id id})  ;; Adding type "id"
+  {:type "idC" :id id})  
 
 (fn create-appC [funID argsIDs]
   {:type "appC" :funID funID :argsIDs argsIDs})
@@ -38,12 +35,13 @@
 (fn create-bind [id val]
   {:type "bind" :id id :val val})
 
-;; parser (time permitting)
+;;top level environment
 (local top-env [(create-bind (create-idC :+) (create-primopV :+))
                 (create-bind (create-idC :-) (create-primopV :-))
                 (create-bind (create-idC :*) (create-primopV :*))
                 (create-bind (create-idC :/) (create-primopV :/))])
 
+;;Converting interp results
 (fn serialize [val]
   (match val
     {:type "numV" :n n} n
@@ -62,7 +60,7 @@
           :/ (create-numV (/ arg1.n arg2.n))
           _ (error "terrible operators" op))))
 
-(fn shallow-copy [tbl]
+(fn copy [tbl]
   (do
     (var new-tbl {})
     (each [k v (pairs tbl)] 
@@ -72,7 +70,7 @@
 (fn extend-closure [args-id args-value clo-env]
   (if (= (length args-id) (length args-value))
       (do
-        (var new-env (shallow-copy clo-env))
+        (var new-env (copy clo-env))
         (for [i 1 (length args-id)]
           (do
             (var bind (create-bind (. args-id i) (. args-value i)))
@@ -121,13 +119,15 @@
                 (interp thenID interp-env)
                 (interp elseID interp-env))
             _ "if no work"))        
-    _ (error "Cheeseballs")))  ;; Catch any unknown ASTs
+    _ (error "Bad interpret")))  ;; Catch any unknown ASTs
 
 
 ;; Test cases
+
+;;Small ones
 (assert (= (serialize (interp (create-numC 5) top-env)) 5))
 
-(assert (= (serialize (interp (create-strC "I hate fennel") top-env)) "I hate fennel"))
+(assert (= (serialize (interp (create-strC "fennel") top-env)) "fennel"))
 
 (assert (= (serialize (interp (create-appC (create-idC :+) 
 [(create-numC 5) (create-numC 6)]) top-env)) 11))
@@ -136,6 +136,9 @@
 (create-appC (create-lamC [(create-idC :x)] (create-appC (create-idC :+) 
 [(create-idC :x) (create-numC 1)])) [(create-numC 3)]) top-env)) 4))
 
+;;Big Ones that have scoping
+
+;'{{proc {x y} {+ x {{proc {y} {+ y 1}} 5}}} 4 5}
 (assert (= (serialize (interp (create-appC
   (create-lamC
     [(create-idC :x) (create-idC :y)]
@@ -151,3 +154,19 @@
          [(create-numC 5)])]))
   [(create-numC 4) (create-numC 5)])
 top-env)) 10))
+
+;'{{proc {x y} {+ y {{proc {} {+ x 1}}}}} 2 3}
+(assert (= (serialize (interp (create-appC
+  (create-lamC
+    [(create-idC :x) (create-idC :y)]
+    (create-appC
+      (create-idC :+)
+      [(create-idC :y)
+       (create-appC
+         (create-lamC []
+           (create-appC
+             (create-idC :+)
+             [(create-idC :x) (create-numC 1)]))
+         [])]))
+  [(create-numC 2) (create-numC 3)])
+top-env)) 6))
