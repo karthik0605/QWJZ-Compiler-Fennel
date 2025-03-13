@@ -101,8 +101,6 @@
             {:type "primopV" :op op} 
             (do
               (local interped-args [])
-              ; (each [k v (pairs interp-env)]
-              ;    (print v.id.id v.val.n))
               (for [i 1 (length argsIDs)]
                 (table.insert interped-args (interp (. argsIDs i) interp-env)))
               (apply-op op interped-args))
@@ -111,8 +109,6 @@
               (local interped-args [])
               (for [i 1 (length argsIDs)]
                 (table.insert interped-args (interp (. argsIDs i) interp-env)))
-              ; (each [k v (pairs (extend-closure args interped-args clo-env))]
-              ;   (print v.id.id v.val.n))
               (interp body (extend-closure args interped-args clo-env)))
             _ (print "error")))
     {:type "lamC" :argsIDs argIDs :body body} (create-cloV argIDs body interp-env)
@@ -129,10 +125,9 @@
 
 
 ;; Test cases
-(print (serialize (interp (create-numC 5) top-env)))
-(print (serialize (interp (create-strC "I hate fennel") top-env)))  
-(print (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)))
-
-(print (serialize (interp 
+(assert (= (serialize (interp (create-numC 5) top-env)) 5))
+(assert (= (serialize (interp (create-strC "I hate fennel") top-env)) "I hate fennel"))
+(assert (= (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)) 11))
+(assert (= (serialize (interp 
 (create-appC (create-lamC [(create-idC :x)] (create-appC (create-idC :+) 
-[(create-idC :x) (create-numC 1)])) [(create-numC 3)]) top-env)))
+[(create-idC :x) (create-numC 1)])) [(create-numC 3)]) top-env)) 4))
