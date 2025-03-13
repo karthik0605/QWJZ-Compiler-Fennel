@@ -116,24 +116,22 @@
               (interp body (extend-closure args interped-args clo-env)))
             _ (print "error")))
     {:type "lamC" :argsIDs argIDs :body body} (create-cloV argIDs body interp-env)
-    ; {:type "ifC" :ifID ifID :thenID thenID :elseID elseID}
-    ; (do
-    ;     (local ans (interp ifID env))
-    ;     (match ans
-    ;         {:type "boolV" :b b} 
-    ;         (if b
-    ;             (interp thenID env)
-    ;             (interp elseID env))
-    ;         _ "if no work"))        
+    {:type "ifC" :ifID ifID :thenID thenID :elseID elseID}
+    (do
+        (local ans (interp ifID interp-env))
+        (match ans
+            {:type "boolV" :b b} 
+            (if b
+                (interp thenID interp-env)
+                (interp elseID interp-env))
+            _ "if no work"))        
     _ (error "Cheeseballs")))  ;; Catch any unknown ASTs
 
-;;have clo-env and stuff locally scoped
-;fennel specific syntax
-;; Test cases
-(print (serialize (interp (create-numC 5) top-env)))  ;; Should print 5
-(print (serialize (interp (create-strC "I hate fennel") top-env)))  ;; Should print "I hate fennel"
-(print (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)))
 
+;; Test cases
+(print (serialize (interp (create-numC 5) top-env)))
+(print (serialize (interp (create-strC "I hate fennel") top-env)))  
+(print (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)))
 
 (print (serialize (interp 
 (create-appC (create-lamC [(create-idC :x)] (create-appC (create-idC :+) 
