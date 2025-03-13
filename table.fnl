@@ -126,8 +126,28 @@
 
 ;; Test cases
 (assert (= (serialize (interp (create-numC 5) top-env)) 5))
+
 (assert (= (serialize (interp (create-strC "I hate fennel") top-env)) "I hate fennel"))
-(assert (= (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)) 11))
+
+(assert (= (serialize (interp (create-appC (create-idC :+) 
+[(create-numC 5) (create-numC 6)]) top-env)) 11))
+
 (assert (= (serialize (interp 
 (create-appC (create-lamC [(create-idC :x)] (create-appC (create-idC :+) 
 [(create-idC :x) (create-numC 1)])) [(create-numC 3)]) top-env)) 4))
+
+(assert (= (serialize (interp (create-appC
+  (create-lamC
+    [(create-idC :x) (create-idC :y)]
+    (create-appC 
+      (create-idC :+) 
+      [(create-idC :x) 
+       (create-appC 
+         (create-lamC 
+           [(create-idC :y)]
+           (create-appC 
+             (create-idC :+) 
+             [(create-idC :y) (create-numC 1)]))
+         [(create-numC 5)])]))
+  [(create-numC 4) (create-numC 5)])
+top-env)) 10))
