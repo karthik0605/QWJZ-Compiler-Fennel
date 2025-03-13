@@ -1,4 +1,7 @@
-;; insert functions
+;; insert functions 
+
+;;ids have to be strings, not symbols
+
 (fn create-numC [n]
   {:type "numC" :n n})  ;; Adding type "num"
 
@@ -27,7 +30,7 @@
   {:type "boolV" :b b})  
 
 (fn create-cloV [args body clo-env]
-  {:type "cloV" :args args :body body :clo-env clo-env})
+  {:type "cloV" :args args :body body :env clo-env})
 
 (fn create-primopV [op]
   {:type "primopV" :op op})
@@ -36,16 +39,16 @@
   {:type "bind" :id id :val val})
 
 ;; parser (time permitting)
-(local top-env [(create-bind :+ (create-primopV :+))
-                (create-bind :- (create-primopV :-))
-                (create-bind :* (create-primopV :*))
-                (create-bind :/ (create-primopV :/))])
+(local top-env [(create-bind (create-idC :+) (create-primopV :+))
+                (create-bind (create-idC :-) (create-primopV :-))
+                (create-bind (create-idC :*) (create-primopV :*))
+                (create-bind (create-idC :/) (create-primopV :/))])
 
 (fn serialize [val]
   (match val
     {:type "numV" :n n} n
-    {:type "boolV" :b b} b
-    {:type "strV" :s s} s))
+    {:type "strV" :str str} str
+    {:type "boolV" :b b} b))
 
 (fn apply-op [op args]
     ;if statement for length of args
@@ -59,29 +62,62 @@
           :/ (create-numV (/ arg1.n arg2.n))
           _ (error "terrible operators" op))))
 
+(fn shallow-copy [tbl]
+  (do
+    (var new-tbl {})
+    (each [k v (pairs tbl)] 
+      (tset new-tbl k v))  
+    new-tbl))
+
+(fn extend-closure [args-id args-value clo-env]
+  (if (= (length args-id) (length args-value))
+      (do
+        (var new-env (shallow-copy clo-env))
+        (for [i 1 (length args-id)]
+          (do
+            (var bind (create-bind (. args-id i) (. args-value i)))
+            (table.insert new-env bind)))
+        new-env)
+      (error "QWJZ: Number of variables and arguments don't match")))
+
 (fn lookup [id env] 
   (var ans nil)
-  (for [i 1 (length env)]
+  (for [i (length env) 0 -1]
     (do
+      (print "hi" env)
       (local item (. env i))
       (if (= id item.id)
             (set ans item.val)))) ans)
             
+
 ;; Interp function
-(fn interp [ast top-env]
+(fn interp [ast interp-env]
   (match ast
     {:type "numC" :n n} (create-numV n)
     {:type "strC" :str str} (create-strV str)
-    {:type "idC" :id id} (lookup id top-env)
+    {:type "idC" :id id} (print (lookup (create-idC id) interp-env))
     {:type "appC" :funID funID :argsIDs argsIDs}
     (do
-        (local fun (interp funID top-env))
+        (local fun (interp funID interp-env))
         (match fun
-            {:type "primopV" :op op} (apply-op op argsIDs)
-            ; {:type "cloV" :args args :body body :clo-env clo-env}
-            ; (interp body (extend-closure args (interp-args argsIDs env) clo-env))
-            ))
-    {:type "lamC" :argIDs argIDs :body body} (create-cloV argIDs body top-env)
+            {:type "primopV" :op op} 
+            (do
+              (local interped-args [])
+              ; (each [k v (pairs interp-env)]
+              ;    (print v.id.id v.val.n))
+              (for [i 1 (length argsIDs)]
+                (table.insert interped-args (interp (. argsIDs i) interp-env)))
+              (apply-op op (interped-args)))
+            {:type "cloV" :args args :body body :env clo-env}
+            (do
+              (local interped-args [])
+              (for [i 1 (length argsIDs)]
+                (table.insert interped-args (interp (. argsIDs i) interp-env)))
+              ; (each [k v (pairs (extend-closure args interped-args clo-env))]
+              ;   (print v.id.id v.val.n))
+              (interp body (extend-closure args interped-args clo-env)))
+            _ (print "error")))
+    {:type "lamC" :argsIDs argIDs :body body} (create-cloV argIDs body interp-env)
     ; {:type "ifC" :ifID ifID :thenID thenID :elseID elseID}
     ; (do
     ;     (local ans (interp ifID env))
@@ -91,25 +127,17 @@
     ;             (interp thenID env)
     ;             (interp elseID env))
     ;         _ "if no work"))        
-    _ (error "Cheeseballs" ast)))  ;; Catch any unknown ASTs
-
+    _ (error "Cheeseballs")))  ;; Catch any unknown ASTs
 
 ;;have clo-env and stuff locally scoped
 ;fennel specific syntax
-; (fn extend-closure [args-id args-value clo-env]
-;   (if (= (length args-id) (length args-value))
-;       (append (create-bindings args-id args-value) clo-env)
-;       (error 'interp "QWJZ: Number of variables and arguments don't match")))
-
-; ;;Helper function to create bindings for each id and value (as a list of bindings)
-; (fn create-bindings [args-id args-value]
-;   (match (list args-id args-value)
-;     [] [] 
-;     [first-id rest-id] [(create-bind first-id (first args-value))].insert(create-bindings rest-id (rest args-value))))
-
-
 ;; Test cases
 ;(print (serialize (interp (create-numC 5) top-env)))  ;; Should print 5
 ;(print (serialize (interp (create-strC "I hate fennel") top-env)))  ;; Should print "I hate fennel"
 ;(print (interp (create-idC :y)))
-(print (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)))
+;(print (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)))
+
+
+(print (serialize (interp 
+(create-appC (create-lamC [(create-idC :x)] (create-appC (create-idC :+) 
+[(create-idC :x) (create-numC 1)])) [(create-numC 3)]) top-env)))
