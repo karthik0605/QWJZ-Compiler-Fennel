@@ -82,20 +82,18 @@
 
 (fn lookup [id env] 
   (var ans nil)
-  (for [i (length env) 0 -1]
+  (for [i (length env) 1 -1]
     (do
-      (print "hi" env)
       (local item (. env i))
-      (if (= id item.id)
-            (set ans item.val)))) ans)
-            
+      (if (= id.id item.id.id)
+        (set ans item.val)))) ans)
 
 ;; Interp function
 (fn interp [ast interp-env]
   (match ast
     {:type "numC" :n n} (create-numV n)
     {:type "strC" :str str} (create-strV str)
-    {:type "idC" :id id} (print (lookup (create-idC id) interp-env))
+    {:type "idC" :id id} (lookup (create-idC id) interp-env)
     {:type "appC" :funID funID :argsIDs argsIDs}
     (do
         (local fun (interp funID interp-env))
@@ -107,7 +105,7 @@
               ;    (print v.id.id v.val.n))
               (for [i 1 (length argsIDs)]
                 (table.insert interped-args (interp (. argsIDs i) interp-env)))
-              (apply-op op (interped-args)))
+              (apply-op op interped-args))
             {:type "cloV" :args args :body body :env clo-env}
             (do
               (local interped-args [])
@@ -132,10 +130,9 @@
 ;;have clo-env and stuff locally scoped
 ;fennel specific syntax
 ;; Test cases
-;(print (serialize (interp (create-numC 5) top-env)))  ;; Should print 5
-;(print (serialize (interp (create-strC "I hate fennel") top-env)))  ;; Should print "I hate fennel"
-;(print (interp (create-idC :y)))
-;(print (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)))
+(print (serialize (interp (create-numC 5) top-env)))  ;; Should print 5
+(print (serialize (interp (create-strC "I hate fennel") top-env)))  ;; Should print "I hate fennel"
+(print (serialize (interp (create-appC (create-idC :+) [(create-numC 5) (create-numC 6)]) top-env)))
 
 
 (print (serialize (interp 
